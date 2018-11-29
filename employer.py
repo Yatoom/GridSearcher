@@ -3,7 +3,7 @@ import openml
 # Settings
 python_path = "/home/jhoof/python/python36/bin/python3"
 api_path = "/home/jhoof/GridSearcher/cli.py"
-config = "#!/bin/sh\n#SBATCH -t 6:00:00 -N=1 --constraint=avx2"
+config = "#!/bin/sh\n#SBATCH -t 6:00:00 -N 1 --constraint=avx2"
 
 # Default tasks
 default_tasks = [146825, 14969, 6, 3, 9978, 15, 37, 22, 18, 16, 29, 32, 2074, 49, 23, 3917, 3021, 9985, 9964, 10101,
