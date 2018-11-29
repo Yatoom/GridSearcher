@@ -1,3 +1,4 @@
+import os
 import time
 from random import shuffle
 from lightgbm import LGBMClassifier
@@ -15,8 +16,10 @@ client, db = connection.connect()
 
 # Gather Experiments
 print("[SEARCH] Preparing experiments")
-
-with open('grid.json') as f:
+abspath = os.path.abspath(__file__)
+dname = os.path.dirname(abspath)
+filename = os.path.join(dname, "grid.json")
+with open(filename) as f:
     grid = json.load(f)
 
 experiments = []
