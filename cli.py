@@ -43,7 +43,7 @@ for experiment in tqdm(experiments, ascii=True):
     model = LGBMClassifier(verbose=-1, **experiment)
     accuracies = []
     kappas = []
-    f1_scores = []
+    # f1_scores = []
     times = []
 
     for folds in splits.values():
@@ -58,11 +58,11 @@ for experiment in tqdm(experiments, ascii=True):
                 times.append(end - start)
                 accuracies.append(accuracy_score(y[test_index], y_pred))
                 kappas.append(cohen_kappa_score(y[test_index], y_pred))
-                f1_scores.append(f1_score(y[test_index], y_pred))
+                # f1_scores.append(f1_score(y[test_index], y_pred))
 
     eval_time = np.sum(times)
     mean_acc = np.mean(accuracies)
-    mean_f1 = np.mean(f1_scores)
+    # mean_f1 = np.mean(f1_scores)
     mean_kappa = np.mean(kappas)
 
     db.insert({
@@ -70,6 +70,6 @@ for experiment in tqdm(experiments, ascii=True):
         **experiment,
         "eval_time": eval_time,
         "acc": mean_acc,
-        "f1": mean_f1,
+        # "f1": mean_f1,
         "kappa": mean_kappa
     })
