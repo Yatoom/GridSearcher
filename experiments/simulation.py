@@ -9,12 +9,14 @@ from smac.epm.rf_with_instances import RandomForestWithInstances
 # Load data
 from tqdm import tqdm
 
+import warnings
+warnings.filterwarnings("ignore")
+
 frame = pd.read_csv("../results/result.csv", index_col=0)
 
 # Drop duplicates, if any
 parameters = [
-    "learning_rate", "max_depth", "min_child_samples", "n_estimators", "num_leaves", "reg_alpha", "reg_lambda",
-    "task_id"
+    "learning_rate", "max_depth", "min_child_samples", "n_estimators", "num_leaves", "reg_alpha", "reg_lambda"
 ]
 frame.drop_duplicates(subset=parameters)
 
@@ -65,7 +67,8 @@ rfr_score_estimator = Wrap(np.array(types_), np.array(bounds_))
 rfr_time_estimator = Wrap(np.array(types_), np.array(bounds_))
 
 startup_rounds = 3
-for mode in ["gbqr", "rfr", "rfr-rfr", "rfr-gbm", "gbqr-median"]:
+no_random_sampling = True
+for mode in ["rfr-rfr", "rfr-gbm"]:  # "gbqr", "rfr", "rfr-rfr",
 
     # Predict EI
     def predict_ei(points):
@@ -126,33 +129,37 @@ for mode in ["gbqr", "rfr", "rfr-rfr", "rfr-gbm", "gbqr-median"]:
         fitting_times = np.zeros(startup_rounds).tolist()
         prediction_times = np.zeros(startup_rounds).tolist()
 
-        for i in range(500):
-            start = time.time()
-            if mode == "gbqr":
-                lgbm_score_estimator.fit(np.array(observed_X), np.array(observed_Y))
-            elif mode == "gbqr-median":
-                lgbm_score_estimator.fit(np.array(observed_X), np.array(observed_Y))
-                lgbm_time_estimator.fit(np.array(observed_X), np.log(np.array(observed_duration) + 1))
-            else:
-                rfr_score_estimator.fit(np.array(observed_X), np.array(observed_Y))
-
-                if mode == "rfr-gbm":
+        for i in range(1000):
+            if i % 2 == 0 or no_random_sampling:
+                start = time.time()
+                if mode == "gbqr":
+                    lgbm_score_estimator.fit(np.array(observed_X), np.array(observed_Y))
+                elif mode == "gbqr-median":
+                    lgbm_score_estimator.fit(np.array(observed_X), np.array(observed_Y))
                     lgbm_time_estimator.fit(np.array(observed_X), np.log(np.array(observed_duration) + 1))
-                elif mode == "rfr-rfr":
-                    rfr_time_estimator.fit(np.array(observed_X), np.log(np.array(observed_duration) + 1))
-            fitting_times.append(time.time() - start)
+                else:
+                    rfr_score_estimator.fit(np.array(observed_X), np.array(observed_Y))
 
-            start = time.time()
-            eis = predict_ei(X_task)
-            prediction_times.append(time.time() - start)
+                    if mode == "rfr-gbm":
+                        lgbm_time_estimator.fit(np.array(observed_X), np.log(np.array(observed_duration) + 1))
+                    elif mode == "rfr-rfr":
+                        rfr_time_estimator.fit(np.array(observed_X), np.log(np.array(observed_duration) + 1))
+                fitting_times.append(time.time() - start)
 
-            index = np.argmax(eis)
+                start = time.time()
+                eis = predict_ei(X_task)
+                prediction_times.append(time.time() - start)
+
+                index = np.argmax(eis)
+            else:
+                index = np.random.choice(np.where(~observed)[0])
+
             observed[index] = True
-
             observed_X.append(X_task[index])
             observed_Y.append(Y_task[index])
             observed_duration.append(duration_task[index])
             # print(i, index, X_task[index].tolist(), Y_task[index])
+            # print(index, end=",")
 
         results[task_id] = np.maximum.accumulate(np.array(observed_Y) / np.max(Y_task))
         fitting_times_per_task[task_id] = fitting_times
@@ -165,7 +172,9 @@ for mode in ["gbqr", "rfr", "rfr-rfr", "rfr-gbm", "gbqr-median"]:
     score_frame = pd.DataFrame(results)
 
     prefix = mode
-    fit_frame.to_csv(f"../simulation/500-{prefix}-fit-time.csv")
-    pred_frame.to_csv(f"../simulation/500-{prefix}-time.csv")
-    duration_frame.to_csv(f"../simulation/500-{prefix}-eval-time.csv")
-    score_frame.to_csv(f"../simulation/500-{prefix}-scores.csv")
+    if not no_random_sampling:
+        prefix += "-interleaved"
+    fit_frame.to_csv(f"../simulation/1000-{prefix}-fit-time.csv")
+    pred_frame.to_csv(f"../simulation/1000-{prefix}-time.csv")
+    duration_frame.to_csv(f"../simulation/1000-{prefix}-eval-time.csv")
+    score_frame.to_csv(f"../simulation/1000-{prefix}-scores.csv")
